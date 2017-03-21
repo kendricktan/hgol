@@ -2,19 +2,22 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Main where
 
-import System.Random
 import System.Console.ANSI
 import System.IO
+import System.Posix.Unistd
+import System.Random
 import Control.Concurrent
 import Control.Monad
+import Control.Monad.Loops
 import Control.Monad.IO.Class
 import Data.List
 import Data.IORef
 import Data.Maybe
 import GHC.Generics
 
-windowX = 5
-windowY = 5
+delay = 500000 -- in microseconds
+windowX = 15
+windowY = 15
 
 data GridState = GridState { gsX :: Int, gsY :: Int, alive :: Bool } deriving (Show, Generic)
 
@@ -36,8 +39,8 @@ checkGridAlive gs g
           -- Alive neighbors
           ln = (sum $ map fromEnum tt) - fromEnum ga
 
-updateGrid :: [GridState] -> [GridState]
-updateGrid gs = undefined
+gol :: [GridState] -> [GridState]
+gol g = map (checkGridAlive g) g
 
 -- Displaying GridState on ASCII --
 isNewLine :: GridState -> String
@@ -64,14 +67,16 @@ strGridState gs
 
 putStrGridState :: [GridState] -> IO ()
 putStrGridState g = do
+    clearScreen
     putStrLn $ intercalate "" [ "=" | _ <- [0..windowX*2] ]
     putStrLn $ intercalate "" [ "|" ++ strGridState cg | cg <- g ]
     putStrLn $ intercalate "" [ "=" | _ <- [0..windowX*2] ]
+    usleep delay
+
 
 main :: IO ()
 main = do
     s <- newStdGen
     let grids = genGridState (randomBool s)
-    putStrGridState grids
-    putStrGridState $ map (checkGridAlive grids) grids
+    iterateM_ (\w -> putStrGridState w >> return (gol w)) grids
 
